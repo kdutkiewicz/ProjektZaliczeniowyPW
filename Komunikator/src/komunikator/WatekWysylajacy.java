@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package komunikator;
 
 import java.io.BufferedReader;
@@ -13,14 +8,14 @@ import java.net.Socket;
 
 /**
  *
- * @author kiper
+ * @author Wojtek Bałchanowski & Kacper Dutkiewicz
  */
 public class WatekWysylajacy extends Thread {
 
-    Socket soket = null;
-    BufferedReader brBufferedReader = null;
-    PrintWriter printWriter = null;
-    String imie = "";
+    Socket soket;
+    BufferedReader brBufferedReader;
+    PrintWriter printWriter;
+    String imie;
 
     public WatekWysylajacy(Socket clientSocket, String imie) {
         this.soket = clientSocket;

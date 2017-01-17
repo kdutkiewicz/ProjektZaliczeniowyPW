@@ -13,47 +13,50 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.BindException;
 import java.net.ConnectException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.time.Period;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.List;
 
 /**
  *
- * @author kiper
+ * @author Wojtek Bałchanowski & Kacper Dutkiewicz
  */
 public class Komunikator {
+
     //kolorki
     public static final String ANSI_RESET = "\u001B[0m";
     public static final String ANSI_RED = "\u001B[31m";
     public static final String ANSI_GREEN = "\u001B[32m";
+    public static final String ANSI_BLUE = "\u001B[34m";
 
     static final String NAZWA_PLIKU_Z_ODBIORCAMI = "odbiorcy.txt";
-    static final int PORT = 3000;
+    static int PORT = 3000;
     static BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
     static String imie = "Tomek";
 
     public static void wyswietlMenu() {
-        System.out.println(">>>MENU<<<");
-        System.out.println("1. Nawiaz polaczenie");
-        System.out.println("2. Dodaj odbiorce");
-        System.out.println("3. Nasluchuj");
-        System.out.println("4. Zmien imie");
-        System.out.println("5. Wyjscie");
+        System.out.println(ANSI_BLUE + "************************");
+        System.out.println("*" + ANSI_RESET + "        >MENU<        " + ANSI_BLUE + "*");
+        System.out.println("*" + ANSI_RESET + " 1. Nawiaz polaczenie " + ANSI_BLUE + "*");
+        System.out.println("*" + ANSI_RESET + " 2. Dodaj odbiorce    " + ANSI_BLUE + "*");
+        System.out.println("*" + ANSI_RESET + " 3. Nasluchuj         " + ANSI_BLUE + "*");
+        System.out.println("*" + ANSI_RESET + " 4. Zmien imie        " + ANSI_BLUE + "*");
+        System.out.println("*" + ANSI_RESET + " 5. Zmien port        " + ANSI_BLUE + "*");
+        System.out.println("*" + ANSI_RESET + " 6. Wyjscie           " + ANSI_BLUE + "*");
+        System.out.println("************************" + ANSI_RESET);
     }
-    //metoda obslugujaca prace aplikacji jako klient
+
+    //przejscie w tryb klienta
     public static void nawiazywaniePolaczenia() throws IOException, InterruptedException {
 
         try {
             List<String> listaOdbiorcow = wczytajOdbiorcow();
             int indexOdbiorcy = 0;
-            //obsluga wyboru odbiorcy
+            //wyboru odbiorcy
             do {
                 try {
                     System.out.println("Wybierz odbiorce podajac jego numer");
@@ -66,24 +69,26 @@ public class Komunikator {
             } while (indexOdbiorcy <= 0 || indexOdbiorcy > listaOdbiorcow.size());
             //otiweranie polaczenia z serwerem na podstawie nazwy odbiorcy
             Socket sock = new Socket(listaOdbiorcow.get(indexOdbiorcy - 1), PORT);
-            //potwierdzenie polaczenia
+            //potwierdzenie polaczenia           
             if (sock.isConnected()) {
                 System.out.println(ANSI_GREEN + "Polaczono" + ANSI_RESET);
+                System.out.println("Aby zakończyć polaczenie wpisz: WYJSCIE");
             }
             //uruchomienie watkow
-            WatekOdbierajacy w1 = new WatekOdbierajacy(sock);
-            WatekWysylajacy w2 = new WatekWysylajacy(sock, imie);
-            
-            w1.start();
-            w2.start();
-            w2.join();
+            WatekOdbierajacy watekOdbierajacy = new WatekOdbierajacy(sock);
+            WatekWysylajacy watekWysylajacy = new WatekWysylajacy(sock, imie);
+
+            watekOdbierajacy.start();
+            watekWysylajacy.start();
+            watekWysylajacy.join();
             //obsluga bledow
         } catch (UnknownHostException e) {
             System.out.println(ANSI_RED + "Wybrany host jest bledny" + ANSI_RESET);
         } catch (ConnectException e) {
             System.out.println(ANSI_RED + "Wystapil problem z polaczeniem" + ANSI_RESET);
-        } 
+        }
     }
+
     //metoda odpowiedzialna za wprowadzanie nowego odbiorcy
     public static void dodajOdbiorce() throws IOException {
         String nowyOdbiorca = "";
@@ -95,34 +100,41 @@ public class Komunikator {
         dodajOdbiorceDoPliku(nowyOdbiorca);
 
     }
-    //metoda ustawiajaca aplikacje jako serwer
-    public static void nasluchuj() throws IOException, InterruptedException {
-        ServerSocket serverSocket = new ServerSocket(PORT);
-   
-        try {
-            System.out.println("Nasluchuje polaczenia na porcie: " + PORT);
-            Socket klient = serverSocket.accept();
-            WatekOdbierajacy w1 = new WatekOdbierajacy(klient);
-            WatekWysylajacy w2 = new WatekWysylajacy(klient, imie);
-            //potwierdzenie polaczenia
-            System.out.println(ANSI_GREEN + "Nawiazano polaczenie z adresem " + klient.getInetAddress() + " na porcie " + klient.getPort() + ANSI_RESET);
-            w1.start();
-            w2.start();
-            w2.join();
 
-        } finally {
-            //zamykanie gniazda serwera po zakonczeniu polaczenia
-            serverSocket.close();
+    //przejscie w tryb serwera
+    public static void nasluchuj() throws IOException, InterruptedException {
+        try {
+            ServerSocket serverSocket = new ServerSocket(PORT);
+
+            try {
+                System.out.println("Nasluchuje polaczenia na porcie: " + PORT);
+                Socket klient = serverSocket.accept();
+                WatekOdbierajacy w1 = new WatekOdbierajacy(klient);
+                WatekWysylajacy w2 = new WatekWysylajacy(klient, imie);
+                //potwierdzenie polaczenia
+                System.out.println(ANSI_GREEN + "Nawiazano polaczenie z adresem " + klient.getInetAddress() + " na porcie " + klient.getPort() + ANSI_RESET);
+                System.out.println("Aby zakończyć polaczenie wpisz: WYJSCIE");
+                w1.start();
+                w2.start();
+                w2.join();
+
+            } finally {
+                //zamykanie gniazda serwera po zakonczeniu polaczenia
+                serverSocket.close();
+            }
+        } catch (BindException e) {
+            System.out.println("Nie mozna rozpoczac nasluchiwania, port " + PORT + " jest zajety");
         }
 
     }
-    
+
     public static void wyswietlOdbiorcow() throws IOException {
         int i = 1;
         for (String s : wczytajOdbiorcow()) {
             System.out.println(i++ + ". " + s);
         }
     }
+
     //wczytywanie odbiorcow z pliku
     public static List<String> wczytajOdbiorcow() throws FileNotFoundException, IOException {
         List<String> listaStringow = new ArrayList<>();
@@ -138,6 +150,7 @@ public class Komunikator {
         }
         return listaStringow;
     }
+
     //obsluga zapisania nowego odbiorcy do pliku
     public static void dodajOdbiorceDoPliku(String nowyOdbiorca) throws FileNotFoundException, IOException {
         List<String> listaStringow = wczytajOdbiorcow();
@@ -148,7 +161,7 @@ public class Komunikator {
         }
         bW.close();
     }
-    //mozliwosc zmiany imienia ktore aktualnie jest na sztywno zapisane w kodzie
+
     public static void zmienImie() throws IOException {
         imie = "";
         do {
@@ -157,8 +170,20 @@ public class Komunikator {
         } while (imie.equals(""));
     }
 
-    public static void main(String[] args) throws IOException, InterruptedException {
+    private static void zmienPort() throws IOException {
+        int nowyPort = -1;
+        try {
+            do {
+                System.out.println("Podaj numer portu(0-65000):");
+                nowyPort = Integer.parseInt(bufferedReader.readLine());
+            } while (nowyPort < 0 && nowyPort > 65000);
+            PORT = nowyPort;
+        } catch (NumberFormatException e) {
+            System.out.println("Zły format");
+        }
+    }
 
+    public static void main(String[] args) throws IOException, InterruptedException {
         int zmiennaSterujaca = 0;
         do {
             try {
@@ -179,18 +204,20 @@ public class Komunikator {
                         zmienImie();
                         break;
                     case 5:
-                        System.exit(0);
-                        break;                  
-                    default:
-                        System.out.println(ANSI_RED + "Wybrano nie poprawna opcje" + ANSI_RESET);
+                        zmienPort();
                         break;
-
+                    case 6:
+                        System.exit(0);
+                        break;
+                    default:
+                        System.out.println(ANSI_RED + "Wybrano niepoprawna opcje" + ANSI_RESET);
+                        break;
                 }
             } catch (NumberFormatException e) {
-                System.out.println(ANSI_RED + "Podaj liczbe z zaresu 1-5!" + ANSI_RESET);
+                System.out.println(ANSI_RED + "Podaj liczbe z zakresu 1-6!" + ANSI_RESET);
             }
 
-        } while (zmiennaSterujaca != 5);
+        } while (zmiennaSterujaca != 6);
 
     }
 
